@@ -1,25 +1,34 @@
-{% extends "base.html" %} {% block title %}Home{% endblock %} {% block content
-  %}
+{% extends "base.html" %} 
+
+{% block title %}Home{% endblock %} 
+
+{% block content %}
   <h1 align="center">{% block header %}Posts{% endblock %}</h1>
   <div id="posts">
+    <button id="delete-posts-btn" style="display: none;" onclick="deleteSelectedItems('post')">Xóa bài viết đã chọn</button>
+    <button id="delete-comments-btn" style="display: none;" onclick="deleteSelectedItems('comment')">Xóa bình luận đã chọn</button>
+    
     {% for post in posts %}
     <div class="card border-dark">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <a href="/posts/{{post.user.username}}">{{post.user.username}}</a>
-        {% if user.id == post.author %}
-        <div class="btn-group">
-          <button
-            type="button"
-            class="btn btn-sm btn-primary dropdown-toggle"
-            data-bs-toggle="dropdown"
-          ></button>
-          <ul class="dropdown-menu">
-            <li>
-              <a href="/delete-post/{{post.id}}" class="dropdown-item">Delete</a>
-            </li>
-          </ul>
+        <div>
+          <a href="/posts/{{post.user.username}}">{{post.user.username}}</a>
         </div>
-        {% endif %}
+        <div class="d-flex align-items-center">
+          {% if user.id == post.author %}
+          <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown"></button>
+            <ul class="dropdown-menu">
+              <li>
+                <a href="/delete-post/{{post.id}}" class="dropdown-item">Delete</a>
+              </li>
+            </ul>
+          </div>
+          {% endif %}
+          <label class="ms-2">
+            <input type="checkbox" class="post-checkbox" value="{{ post.id }}"> Chọn
+          </label>
+        </div>
       </div>
       <div class="card-body">
         <div class="card-text">{{post.text}}</div>
@@ -30,30 +39,23 @@
               {% for comment in post.comments %}
               <div class="d-flex justify-content-between align-items-center">
                 <div>
-                  <a href="/posts/{{comment.user.username}}"
-                    >{{comment.user.username}}</a
-                  >: {{comment.text}}
+                  <a href="/posts/{{comment.user.username}}">{{comment.user.username}}</a>: {{comment.text}}
                 </div>
-                <div>
-                  <small class="text-muted"> {{comment.date_created}}</small>
+                <div class="d-flex align-items-center">
+                  <small class="text-muted me-2"> {{comment.date_created}}</small>
                   {% if user.id == comment.author or user.id == post.author %}
-                  <div class="btn-group">
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-primary dropdown-toggle"
-                      data-bs-toggle="dropdown"
-                    ></button>
+                  <div class="btn-group me-2">
+                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown"></button>
                     <ul class="dropdown-menu">
                       <li>
-                        <a
-                          href="/delete-comment/{{comment.id}}"
-                          class="dropdown-item"
-                          >Delete</a
-                        >
+                        <a href="/delete-comment/{{comment.id}}" class="dropdown-item">Delete</a>
                       </li>
                     </ul>
                   </div>
                   {% endif %}
+                  <label>
+                    <input type="checkbox" class="comment-checkbox" value="{{ comment.id }}"> Chọn
+                  </label>
                 </div>
               </div>
               {% endfor %}
@@ -69,18 +71,8 @@
           <small class="text-muted">No Comments</small>
           {% endif %}
         </p>
-        <form
-          class="input-group mb-3"
-          method="POST"
-          action="/create-comment/{{post.id}}"
-        >
-          <input
-            type="text"
-            id="text"
-            name="text"
-            class="form-control"
-            placeholder="Comment something!"
-          />
+        <form class="input-group mb-3" method="POST" action="/create-comment/{{post.id}}">
+          <input type="text" id="text" name="text" class="form-control" placeholder="Comment something!" />
           <button type="submit" class="btn btn-primary">Comment</button>
         </form>
       </div>
@@ -88,12 +80,60 @@
     </div>
     <br/ > {% endfor %}
   </div>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        function toggleDeleteButton(selector, buttonId) {
+            let checkboxes = document.querySelectorAll(selector);
+            let button = document.getElementById(buttonId);
+
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener("change", function () {
+                    let anyChecked = [...checkboxes].some(cb => cb.checked);
+                    button.style.display = anyChecked ? "block" : "none";
+                });
+            });
+        }
+
+        toggleDeleteButton(".post-checkbox", "delete-posts-btn");
+        toggleDeleteButton(".comment-checkbox", "delete-comments-btn");
+    });
+
+    function deleteSelectedItems(type) {
+        let selectedIds = [];
+        document.querySelectorAll(`.${type}-checkbox:checked`).forEach(checkbox => {
+            selectedIds.push(checkbox.value);
+        });
+        
+        if (selectedIds.length === 0) {
+            alert("Vui lòng chọn ít nhất một mục để xóa!");
+            return;
+        }
+
+        fetch(`/delete-selected-${type}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ ids: selectedIds })
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("Xóa thành công!");
+                location.reload();
+            } else {
+                alert("Xóa không thành công: " + data.message);
+            }
+        });
+    }
+  </script>
+
   {% block footer %}
   <div align="center">
-    <a href="/create-post"
-      ><button type="button" class="btn btn-primary btn-lg">
-        Create a Post
-      </button></a
-    >
+    <a href="/create-post">
+      <button type="button" class="btn btn-primary btn-lg">Create a Post</button>
+    </a>
   </div>
-  {% endblock %} {% endblock %}
+  {% endblock %} 
+
+{% endblock %}

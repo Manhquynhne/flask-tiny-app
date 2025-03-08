@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for
+from flask import Blueprint, render_template, request, flash, redirect, url_for,jsonify
 from flask_login import login_required, current_user
 from .models import Post, User, Comment
 from . import db
@@ -96,3 +96,38 @@ def delete_comment(comment_id):
         db.session.commit()
 
     return redirect(url_for('views.home'))
+
+@views.route("/delete-selected-post", methods=["POST"])
+@login_required
+def delete_selected_posts():
+    data = request.get_json()
+    post_ids = data.get("ids", [])
+
+    if not post_ids:
+        return jsonify({"success": False, "message": "Không có bài viết nào được chọn!"})
+
+    for post_id in post_ids:
+        post = Post.query.get(post_id)
+        if post and post.author == current_user.id:
+            db.session.delete(post)
+
+    db.session.commit()
+    return jsonify({"success": True, "message": "Xóa bài viết thành công!"})
+
+
+@views.route("/delete-selected-comment", methods=["POST"])
+@login_required
+def delete_selected_comments():
+    data = request.get_json()
+    comment_ids = data.get("ids", [])
+
+    if not comment_ids:
+        return jsonify({"success": False, "message": "Không có bình luận nào được chọn!"})
+
+    for comment_id in comment_ids:
+        comment = Comment.query.get(comment_id)
+        if comment and (comment.author == current_user.id or comment.post.author == current_user.id):
+            db.session.delete(comment)
+
+    db.session.commit()
+    return jsonify({"success": True, "message": "Xóa bình luận thành công!"})
