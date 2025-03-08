@@ -9,26 +9,20 @@
     <button id="delete-comments-btn" style="display: none;" onclick="deleteSelectedItems('comment')">Xóa bình luận đã chọn</button>
     
     {% for post in posts %}
-    <div class="card border-dark">
+    <div class="card border-dark post-item" style="display: none;">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-          <a href="/posts/{{post.user.username}}">{{post.user.username}}</a>
+        <a href="/posts/{{post.user.username}}">{{post.user.username}}</a>
+        {% if user.id == post.author %}
+        <div class="btn-group">
+          <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown"></button>
+          <ul class="dropdown-menu">
+            <li>
+              <a href="javascript:void(0);" class="dropdown-item" onclick="deleteSelectedItems('post', ['{{post.id}}'])">Delete</a>
+            </li>
+          </ul>
         </div>
-        <div class="d-flex align-items-center">
-          {% if user.id == post.author %}
-          <div class="btn-group me-2">
-            <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown"></button>
-            <ul class="dropdown-menu">
-              <li>
-                <a href="/delete-post/{{post.id}}" class="dropdown-item">Delete</a>
-              </li>
-            </ul>
-          </div>
-          {% endif %}
-          <label class="ms-2">
-            <input type="checkbox" class="post-checkbox" value="{{ post.id }}"> Chọn
-          </label>
-        </div>
+        {% endif %}
+        <input type="checkbox" class="post-checkbox" value="{{ post.id }}" onchange="toggleDeleteButtons()"> <!-- Checkbox bài viết -->
       </div>
       <div class="card-body">
         <div class="card-text">{{post.text}}</div>
@@ -41,22 +35,20 @@
                 <div>
                   <a href="/posts/{{comment.user.username}}">{{comment.user.username}}</a>: {{comment.text}}
                 </div>
-                <div class="d-flex align-items-center">
-                  <small class="text-muted me-2"> {{comment.date_created}}</small>
+                <div>
+                  <small class="text-muted"> {{comment.date_created}}</small>
                   {% if user.id == comment.author or user.id == post.author %}
-                  <div class="btn-group me-2">
+                  <div class="btn-group">
                     <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown"></button>
                     <ul class="dropdown-menu">
                       <li>
-                        <a href="/delete-comment/{{comment.id}}" class="dropdown-item">Delete</a>
+                        <a href="javascript:void(0);" class="dropdown-item" onclick="deleteSelectedItems('comment', ['{{comment.id}}'])">Delete</a>
                       </li>
                     </ul>
                   </div>
                   {% endif %}
-                  <label>
-                    <input type="checkbox" class="comment-checkbox" value="{{ comment.id }}"> Chọn
-                  </label>
                 </div>
+                <input type="checkbox" class="comment-checkbox" value="{{ comment.id }}" onchange="toggleDeleteButtons()"> <!-- Checkbox bình luận -->
               </div>
               {% endfor %}
             </div>
@@ -80,31 +72,42 @@
     </div>
     <br/ > {% endfor %}
   </div>
+
+  <button id="load-more-btn" class="btn btn-primary">Tải thêm</button>
   
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-        function toggleDeleteButton(selector, buttonId) {
-            let checkboxes = document.querySelectorAll(selector);
-            let button = document.getElementById(buttonId);
+        let posts = document.querySelectorAll(".post-item");
+        let currentPostIndex = 0;
+        let postsPerPage = 5;
 
-            checkboxes.forEach(checkbox => {
-                checkbox.addEventListener("change", function () {
-                    let anyChecked = [...checkboxes].some(cb => cb.checked);
-                    button.style.display = anyChecked ? "block" : "none";
-                });
+        function showNextPosts() {
+            for (let i = currentPostIndex; i < currentPostIndex + postsPerPage && i < posts.length; i++) {
+                posts[i].style.display = "block";
+            }
+            currentPostIndex += postsPerPage;
+            if (currentPostIndex >= posts.length) {
+                document.getElementById("load-more-btn").style.display = "none";
+            }
+        }
+
+        showNextPosts();
+        document.getElementById("load-more-btn").addEventListener("click", showNextPosts);
+    });
+
+    function toggleDeleteButtons() {
+        document.getElementById("delete-posts-btn").style.display = document.querySelector(".post-checkbox:checked") ? "block" : "none";
+        document.getElementById("delete-comments-btn").style.display = document.querySelector(".comment-checkbox:checked") ? "block" : "none";
+    }
+
+    function deleteSelectedItems(type, ids = null) {
+        let selectedIds = ids || [];
+        if (!ids) {
+            document.querySelectorAll(`.${type}-checkbox:checked`).forEach(checkbox => {
+                selectedIds.push(checkbox.value);
             });
         }
 
-        toggleDeleteButton(".post-checkbox", "delete-posts-btn");
-        toggleDeleteButton(".comment-checkbox", "delete-comments-btn");
-    });
-
-    function deleteSelectedItems(type) {
-        let selectedIds = [];
-        document.querySelectorAll(`.${type}-checkbox:checked`).forEach(checkbox => {
-            selectedIds.push(checkbox.value);
-        });
-        
         if (selectedIds.length === 0) {
             alert("Vui lòng chọn ít nhất một mục để xóa!");
             return;
@@ -116,15 +119,17 @@
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({ ids: selectedIds })
-        }).then(response => response.json())
+        })
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
                 alert("Xóa thành công!");
                 location.reload();
             } else {
-                alert("Xóa không thành công: " + data.message);
+                alert("Lỗi: " + data.message);
             }
-        });
+        })
+        .catch(error => console.error("Lỗi khi gửi request xóa:", error));
     }
   </script>
 
