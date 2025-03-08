@@ -15,16 +15,21 @@ def login():
 
         user = User.query.filter_by(email=email).first()
         if user:
+            if user.is_blocked:
+                flash("Tài khoản của bạn đã bị khóa!", category='error')
+                return redirect(url_for('auth.login'))
+            
             if check_password_hash(user.password, password):
-                flash("Logged in!", category='success')
                 login_user(user, remember=True)
+                flash("Đăng nhập thành công!", category='success')
                 return redirect(url_for('views.home'))
             else:
-                flash('Password is incorrect.', category='error')
+                flash('Sai mật khẩu.', category='error')
         else:
-            flash('Email does not exist.', category='error')
+            flash('Email không tồn tại.', category='error')
 
     return render_template("login.html", user=current_user)
+
 
 
 @auth.route("/sign-up", methods=['GET', 'POST'])

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Trang quản lý Admin</h2>
+<table border="1">
+    <tr>
+        <th>ID</th>
+        <th>Email</th>
+        <th>Username</th>
+        <th>Trạng thái</th>
+        <th>Hành động</th>
+    </tr>
+    {% for user in users %}
+    <tr>
+        <td>{{ user.id }}</td>
+        <td>{{ user.email }}</td>
+        <td>{{ user.username }}</td>
+        <td>
+            {% if user.is_blocked %}
+                <span style="color: red;">Bị khóa</span>
+            {% else %}
+                <span style="color: green;">Hoạt động</span>
+            {% endif %}
+        </td>
+        <td>
+            {% if user.is_blocked %}
+                <a href="{{ url_for('admin.unblock_user', user_id=user.id) }}">Mở khóa</a>
+            {% else %}
+                <a href="{{ url_for('admin.block_user', user_id=user.id) }}">Khóa</a>
+            {% endif %}
+            |
+            <a href="{{ url_for('admin.reset_password', user_id=user.id) }}">Reset mật khẩu</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
